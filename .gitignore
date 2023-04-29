@@ -1,0 +1,10 @@
+*.so
+*.o
+.*.swp
+a.out
+rename
+sendfile
+copy_file_range
+mmapwrite
+mmcopy
+readwrite
