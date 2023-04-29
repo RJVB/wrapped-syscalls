@@ -46,7 +46,7 @@ static void init_sendfile()
         // libc (?) doesn't have the sendfile function, create our own. Sadly we
         // cannot seem to obtain the address of the syscall directly.
         __real_sendfile = syscall_sendfile;
-        if (getenv("SENDFILE_VERBOSE")) {
+        if (getenv("SENDFILE_DEBUG")) {
             fprintf(stderr, "sendfile(2) mapped to syscall(__NR_sendfile,...) wrapper\n");
         }
 #else

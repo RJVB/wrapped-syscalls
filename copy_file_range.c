@@ -26,64 +26,64 @@ static ssize_t syscall_copy_file_range(int fd_in, off64_t *off_in, int fd_out, o
 static void init_copy_file_range() __attribute__((constructor)) ;
 static void init_copy_file_range()
 {
-	if (!(__real_copy_file_range = dlsym(RTLD_NEXT, "copy_file_range"))) {
+    if (!(__real_copy_file_range = dlsym(RTLD_NEXT, "copy_file_range"))) {
 #ifdef __NR_copy_file_range
         // libc (?) doesn't have the copy_file_range function, create our own. Sadly we
         // cannot seem to obtain the address of the syscall directly.
         __real_copy_file_range = syscall_copy_file_range;
-        if (getenv("COPY_FILE_RANGE_VERBOSE")) {
+        if (getenv("COPY_FILE_RANGE_DEBUG")) {
             fputs(__FUNCTION__, stderr);
             fprintf(stderr, ": copy_file_range(2) mapped to syscall(__NR_copy_file_range,...) wrapper\n");
         }
 #else
         fputs(__PRETTY_FUNCTION__, stderr);
-		perror(" couldn't overload copy_file_range(2)");
-		abort();
+        perror(" couldn't overload copy_file_range(2)");
+        abort();
 #endif
-	}
+    }
 }
 
 ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out, size_t len, unsigned int flags)
 {
-	errno = 0;
-	ssize_t n;
-	if ((n = __real_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags)) < 0 
+    errno = 0;
+    ssize_t n;
+    if ((n = __real_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags)) < 0 
             && (errno == EAGAIN || errno == EXDEV)) {
         if (getenv("COPY_FILE_RANGE_VERBOSE")) {
-			fprintf(stderr, "copy_file_range(2) returned %s; trying with mmap()+write()\n",
+            fprintf(stderr, "copy_file_range(2) returned %s; trying with mmap()+write()\n",
                 (errno == EAGAIN)? "EAGAIN" : "EXDEV");
         }
-		errno = 0;
-		struct stat stb1, stb2;
-		if (fstat(fd_in, &stb1) < 0 || fstat(fd_out, &stb2) < 0) {
-			return -1;
-		}
-		size_t remains1;
-		off_t curpos1 = lseek(fd_in, 0, SEEK_CUR);
-		if (off_in) {
-			if (*off_in > stb1.st_size) {
-				errno = EINVAL;
-				return -1;
-			}
-			remains1 = stb1.st_size - *off_in;
-		} else {
-			remains1 = stb1.st_size - curpos1;
-		}
-		if (len > remains1) {
-			len = remains1;
-		}
-		if (len > 0) {
+        errno = 0;
+        struct stat stb1, stb2;
+        if (fstat(fd_in, &stb1) < 0 || fstat(fd_out, &stb2) < 0) {
+            return -1;
+        }
+        size_t remains1;
+        off_t curpos1 = lseek(fd_in, 0, SEEK_CUR);
+        if (off_in) {
+            if (*off_in > stb1.st_size) {
+                errno = EINVAL;
+                return -1;
+            }
+            remains1 = stb1.st_size - *off_in;
+        } else {
+            remains1 = stb1.st_size - curpos1;
+        }
+        if (len > remains1) {
+            len = remains1;
+        }
+        if (len > 0) {
             // we should be good now w.r.t. the ranges, including the overlap condition
             // in case of reading and writing to the same file. The syscall would have
             // failed with a different errno if those had been wrong.
-			char *src = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd_in, (off_in)? *off_in : curpos1);
-			if (src != MAP_FAILED) {
+            char *src = mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd_in, (off_in)? *off_in : curpos1);
+            if (src != MAP_FAILED) {
                 if (off_out) {
                     n = pwrite(fd_out, src, len, *off_out);
                 } else {
                     n = write(fd_out, src, len);
                 }
-				munmap(src, len);
+                munmap(src, len);
                 if (n > 0) {
                     if (off_in) {
                         *off_in += n;
@@ -94,18 +94,18 @@ ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out
                         *off_out += n;
                     }
                 }
-			}
-		} else {
-			n = 0;
-			if (off_in) {
-				*off_in = stb1.st_size;
-			} else {
-				lseek(fd_in, 0, SEEK_END);
-			}
-		}
-		// n is not changed in case MAP_FAILED
-	}
-	return n;
+            }
+        } else {
+            n = 0;
+            if (off_in) {
+                *off_in = stb1.st_size;
+            } else {
+                lseek(fd_in, 0, SEEK_END);
+            }
+        }
+        // n is not changed in case MAP_FAILED
+    }
+    return n;
 }
 
 #ifndef BUILD_AS_LIBRARY
@@ -122,9 +122,9 @@ int main(int argc, char **argv)
 
     while (n > 0) {
         n = copy_file_range(fromfd, 0, tofd, 0, BUF_SIZE, 0);
-	   if (n < 0) {
-		   perror("copy_file_range() error");
-	   }
+       if (n < 0) {
+           perror("copy_file_range() error");
+       }
     }
     close(tofd);
     close(fromfd);

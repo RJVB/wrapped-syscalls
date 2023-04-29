@@ -7,3 +7,6 @@ A quick hack for Linux to work around a few common syscalls that fail for "commo
    Set *RENAME_ACROSS_DEVICES=1* to catch this *EXDEV* condition and attempt a workaround.
    The workaround uses `sendfile(2)` (the wrapped version) for renaming a file to another file
    or to a non-existing destination, or `system("mv a b")` otherwise.
+
+Set *SENDFILE_VERBOSE*, *COPY_FILE_RANGE_VERBOSE* or *RENAME_VERBOSE* to be informed when
+the fallbacks are triggered.
