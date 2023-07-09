@@ -36,11 +36,13 @@ int rename(const char *oldf, const char *newf)
         int doRAD = getenv("RENAME_ACROSS_DEVICES") != NULL;
         struct stat sbo;
         int statret, stat_errno;
+        const char *_oldf_ = oldf? oldf : "<nullptr!>";
+        const char *_newf_ = newf? newf : "<nullptr!>";
         int rename_errno = errno;
         // get the source file information, used further down and here
         // in order to determine if it even exists. Cache the errno info.
         errno = 0;
-        statret = stat(oldf, &sbo);
+        statret = oldf? stat(oldf, &sbo) : -1;
         stat_errno = errno;
         errno = rename_errno;
         // inform the user even if we're dealing with a vulgar file-not-exist error.
@@ -48,10 +50,10 @@ int rename(const char *oldf, const char *newf)
         // the situation we're supposed to work around and we don't want to leave the
         // impression we're not doing our job.
         if (verbose && ((errno != ENOENT && stat_errno != ENOENT) || doRAD)) {
-            fprintf(stderr, "syscall rename(%s,%s) failed with error %d: ", oldf, newf, errno);
+            fprintf(stderr, "syscall rename(%s,%s) failed with error %d: ", _oldf_, _newf_, errno);
             perror("");
         }
-        if (errno == EXDEV && doRAD) {
+        if (errno == EXDEV && doRAD && oldf && newf) {
             struct stat sbn;
             if (statret == 0 && S_ISREG(sbo.st_mode)) {
                 errno = 0;
