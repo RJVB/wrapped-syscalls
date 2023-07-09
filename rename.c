@@ -33,13 +33,27 @@ int rename(const char *oldf, const char *newf)
     int n;
     if ((n = __real_rename(oldf, newf)) < 0) {
         int verbose = getenv("RENAME_VERBOSE") != NULL;
-        if (verbose) {
+        int doRAD = getenv("RENAME_ACROSS_DEVICES") != NULL;
+        struct stat sbo;
+        int statret, stat_errno;
+        int rename_errno = errno;
+        // get the source file information, used further down and here
+        // in order to determine if it even exists. Cache the errno info.
+        errno = 0;
+        statret = stat(oldf, &sbo);
+        stat_errno = errno;
+        errno = rename_errno;
+        // inform the user even if we're dealing with a vulgar file-not-exist error.
+        // While that's not our concern in this wrapper the calling code might report
+        // the situation we're supposed to work around and we don't want to leave the
+        // impression we're not doing our job.
+        if (verbose && ((errno != ENOENT && stat_errno != ENOENT) || doRAD)) {
             fprintf(stderr, "syscall rename(%s,%s) failed with error %d: ", oldf, newf, errno);
             perror("");
         }
-        if (errno == EXDEV && getenv("RENAME_ACROSS_DEVICES")) {
-            struct stat sbo, sbn;
-            if (stat(oldf, &sbo) == 0 && S_ISREG(sbo.st_mode)) {
+        if (errno == EXDEV && doRAD) {
+            struct stat sbn;
+            if (statret == 0 && S_ISREG(sbo.st_mode)) {
                 errno = 0;
                 int ret = stat(newf, &sbn);
                 if ( (ret < 0 && errno == ENOENT) || (ret == 0 && S_ISREG(sbn.st_mode))) {
@@ -73,21 +87,26 @@ int rename(const char *oldf, const char *newf)
                     }
                 }
             }
-            // kludgy workaround for code that assumes rename(2) works across devices...
-            // note that we have to unset RENAME_ACROSS_DEVICES!!
-            char *command = NULL;
+            // fallback unless `old` doesn't exist
+            if (!(statret < 0 && stat_errno == ENOENT)) {
+                // kludgy workaround for code that assumes rename(2) works across devices...
+                // note that we have to unset RENAME_ACROSS_DEVICES!!
+                char *command = NULL;
 #ifdef _darwin_
-		  // the system `env` command doesn't support the -u option, so assume the version from MacPorts is on the path.
-            if (asprintf(&command, "genv -u RENAME_ACROSS_DEVICES RENAME_VERBOSE=1 mv \"%s\" \"%s\"", oldf, newf) > 0)
+                // the system `env` command doesn't support the -u option, so assume the version from MacPorts is on the path.
+                if (asprintf(&command, "genv -u RENAME_ACROSS_DEVICES RENAME_VERBOSE=1 mv \"%s\" \"%s\"", oldf, newf) > 0)
 #else
-            if (asprintf(&command, "env -u RENAME_ACROSS_DEVICES RENAME_VERBOSE=1 mv \"%s\" \"%s\"", oldf, newf) > 0)
+                if (asprintf(&command, "env -u RENAME_ACROSS_DEVICES RENAME_VERBOSE=1 mv \"%s\" \"%s\"", oldf, newf) > 0)
 #endif
-		  {
-                int status = system(command);
-                if (!(n = WEXITSTATUS(status))) {
-                    fprintf(stderr, "successful cross-device rename via >mv \"%s\" \"%s\"\n", oldf, newf);
+                {
+                    int status = system(command);
+                    if (!(n = WEXITSTATUS(status)) && verbose) {
+                        fprintf(stderr, "successful cross-device rename via >mv \"%s\" \"%s\"\n", oldf, newf);
+                    }
+                    free(command);
                 }
-                free(command);
+            } else {
+                fprintf(stderr, "non-existing \"%s\" cannot be renamed cross-devices or otherwise\n", oldf);
             }
         }
     }
