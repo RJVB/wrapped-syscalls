@@ -11,9 +11,9 @@
  * the destination. It probably does a lot less checking than
  * the example function.
  */
-extern ssize_t copyfile(int out_fd, int in_fd, off_t *offset, size_t count);
+extern ssize_t copyfd(int out_fd, int in_fd, off_t *offset, size_t count);
 #ifndef linux
-#   define sendfile(o,i,ofs,c) copyfile((o),(i),(ofs),(c))
+#   define sendfile(o,i,ofs,c) copyfd((o),(i),(ofs),(c))
 #endif
 
 #define _COPYFILE_H

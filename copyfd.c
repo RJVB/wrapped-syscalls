@@ -1,8 +1,8 @@
 #include <errno.h>
 
-#include "copyfile.h"
+#include "copyfd.h"
 
-ssize_t copyfile(int out_fd, int in_fd, off_t *offset, size_t count)
+ssize_t copyfd(int out_fd, int in_fd, off_t *offset, size_t count)
 {
     ssize_t n = -1;
     struct stat stat_buf;

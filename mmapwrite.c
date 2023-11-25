@@ -8,7 +8,7 @@
 
 #define BUF_SIZE 4096*1000
 
-#include "copyfile.c"
+#include "copyfd.c"
 
 int main(int argc, char **argv)
 {
@@ -23,9 +23,9 @@ int main(int argc, char **argv)
 
     while (n > 0) {
        errno = 0;
-        n = copyfile(tofd, fromfd, 0, BUF_SIZE);
+        n = copyfd(tofd, fromfd, 0, BUF_SIZE);
        if (n < 0) {
-           perror("copyfile error");
+           perror("copyfd error");
        }
     }
     close(tofd);

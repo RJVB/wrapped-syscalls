@@ -15,7 +15,7 @@
 #   include <sys/syscall.h>
 #endif
 
-#include "copyfile.h"
+#include "copyfd.h"
 
 #define BUF_SIZE 4096*1000
 
@@ -76,7 +76,7 @@ ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 #endif
         errno = 0;
 #if 1
-        ssize_t m = copyfile(out_fd, in_fd, offset, count);
+        ssize_t m = copyfd(out_fd, in_fd, offset, count);
         if (m >= 0) {
             n = m;
         }
@@ -153,13 +153,13 @@ int main(int argc, char **argv)
 
 #include <errno.h>
 
-#include "copyfile.h"
+#include "copyfd.h"
 #undef sendfile
 
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 {
     errno = 0;
-    return copyfile(out_fd, in_fd, offset, count);
+    return copyfd(out_fd, in_fd, offset, count);
 }
 
 #endif

@@ -12,7 +12,7 @@
 #   ifdef linux
 #       include <sys/sendfile.h>
 #   else
-#       include "copyfile.h"
+#       include "copyfd.h"
 #   endif
 
 static int (*__real_rename)(const char *old, const char *new);
