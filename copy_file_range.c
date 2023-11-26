@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <dlfcn.h>
 #include <sys/syscall.h>
+#include "get_process_name.h"
 
 #define BUF_SIZE 4096*1000
 
@@ -43,7 +44,10 @@ static void init_copy_file_range()
     }
     if (getenv("COPY_FILE_RANGE_DEBUG")) {
         fputs(__FUNCTION__, stderr);
-        fprintf(stderr, ": copy_file_range(2) wrapped with a fallback to handle EAGAIN situations\n");
+        pid_t self = getpid();
+        char exename[1024];
+        fprintf(stderr, " [pid %d=%s]: copy_file_range(2) wrapped with a fallback to handle EAGAIN situations\n",
+                self, get_process_name(self, exename, sizeof(exename)));
     }
 }
 

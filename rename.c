@@ -14,6 +14,7 @@
 #   else
 #       include "copyfd.h"
 #   endif
+#include "get_process_name.h"
 
 static int (*__real_rename)(const char *old, const char *new);
 
@@ -27,7 +28,10 @@ static void init_rename()
     }
     if (getenv("RENAME_DEBUG")) {
         fputs(__FUNCTION__, stderr);
-        fprintf(stderr, ": rename(2) wrapped with a fallback to handle cross-device renames\n");
+        pid_t self = getpid();
+        char exename[1024];
+        fprintf(stderr, " [pid %d=%s]: rename(2) wrapped with a fallback to handle cross-device renames\n",
+            self, get_process_name(self, exename, sizeof(exename)));
     }
 }
 

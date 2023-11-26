@@ -16,6 +16,7 @@
 #endif
 
 #include "copyfd.h"
+#include "get_process_name.h"
 
 #define BUF_SIZE 4096*1000
 
@@ -57,7 +58,10 @@ static void init_sendfile()
     }
     if (getenv("SENDFILE_DEBUG")) {
         fputs(__FUNCTION__, stderr);
-        fprintf(stderr, ": sendfile(2) wrapped with a fallback to handle EAGAIN situations\n");
+        pid_t self = getpid();
+        char exename[1024];
+        fprintf(stderr, " [pid %d=%s]: sendfile(2) wrapped with a fallback to handle EAGAIN situations\n",
+            self, get_process_name(self, exename, sizeof(exename)));
     }
 }
 #else
