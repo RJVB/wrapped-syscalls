@@ -25,6 +25,10 @@ static void init_rename()
         perror(" couldn't overload rename(2)");
         abort();
     }
+    if (getenv("RENAME_DEBUG")) {
+        fputs(__FUNCTION__, stderr);
+        fprintf(stderr, ": rename(2) wrapped with a fallback to handle cross-device renames\n");
+    }
 }
 
 int rename(const char *oldf, const char *newf)

@@ -41,6 +41,10 @@ static void init_copy_file_range()
         abort();
 #endif
     }
+    if (getenv("COPY_FILE_RANGE_DEBUG")) {
+        fputs(__FUNCTION__, stderr);
+        fprintf(stderr, ": copy_file_range(2) wrapped with a fallback to handle EAGAIN situations\n");
+    }
 }
 
 ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out, size_t len, unsigned int flags)

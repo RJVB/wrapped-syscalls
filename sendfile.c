@@ -55,6 +55,10 @@ static void init_sendfile()
         abort();
 #endif
     }
+    if (getenv("SENDFILE_DEBUG")) {
+        fputs(__FUNCTION__, stderr);
+        fprintf(stderr, ": sendfile(2) wrapped with a fallback to handle EAGAIN situations\n");
+    }
 }
 #else
 #define __real_sendfile sendfile
