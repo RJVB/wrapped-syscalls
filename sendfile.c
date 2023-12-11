@@ -68,31 +68,40 @@ static void init_sendfile()
 #define __real_sendfile sendfile
 #endif
 
-#if WRAP_SYSCALLS <= 1
+#if WRAP_SYSCALLS < 2
 ssize_t __wrap_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 #else
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 #endif
 {
     errno = 0;
-    ssize_t n;
-    if ((n = __real_sendfile(out_fd, in_fd, offset, count)) < 0 && errno == EAGAIN) {
+    ssize_t n = __real_sendfile(out_fd, in_fd, offset, count);
+#ifdef DEBUG
+    if (getenv("SENDFILE_DEBUG")) {
+        pid_t self = getpid();
+        char exename[1024];
+        fprintf(stderr, "[pid %d=%s]: sendfile(%d,%d,%p,%lu)=%lu errno=%d\n",
+            self, get_process_name(self, exename, sizeof(exename)),
+            out_fd, in_fd, offset, count, n, errno);
+    }
+#endif
+    if (n < 0 && errno == EAGAIN) {
 #if WRAP_SYSCALLS == 2
         if (getenv("SENDFILE_VERBOSE")) {
             fprintf(stderr, "sendfile(2) returned EAGAIN; trying with mmap()+write()\n");
         }
 #endif
         errno = 0;
-#if 1
         ssize_t m = copyfd(out_fd, in_fd, offset, count);
         if (m >= 0) {
             n = m;
         }
-#else
+
         struct stat stat_buf;
         if (fstat(in_fd, &stat_buf) < 0) {
             return -1;
         }
+
         size_t remaining;
         off_t curpos = lseek(in_fd, 0, SEEK_CUR);
         if (offset) {
