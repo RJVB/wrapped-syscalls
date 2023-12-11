@@ -96,49 +96,6 @@ ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
         if (m >= 0) {
             n = m;
         }
-
-        struct stat stat_buf;
-        if (fstat(in_fd, &stat_buf) < 0) {
-            return -1;
-        }
-
-        size_t remaining;
-        off_t curpos = lseek(in_fd, 0, SEEK_CUR);
-        if (offset) {
-            if (*offset > stat_buf.st_size) {
-                errno = EINVAL;
-                return -1;
-            }
-            remaining = stat_buf.st_size - *offset;
-        } else {
-            remaining = stat_buf.st_size - curpos;
-        }
-        if (count > remaining) {
-            count = remaining;
-        }
-        if (count > 0) {
-            char *src = mmap(NULL, count, PROT_READ, MAP_PRIVATE, in_fd, (offset)? *offset : curpos);
-            if (src != MAP_FAILED) {
-                n = write(out_fd, src, count);
-                munmap(src, count);
-                if (n > 0) {
-                    if (offset) {
-                        *offset += n;
-                    } else {
-                        lseek(in_fd, n, SEEK_CUR);
-                    }
-                }
-            }
-        } else {
-            n = 0;
-            if (offset) {
-                *offset = stat_buf.st_size;
-            } else {
-                lseek(in_fd, 0, SEEK_END);
-            }
-        }
-        // n is not changed in case MAP_FAILED
-#endif
     }
     return n;
 }
