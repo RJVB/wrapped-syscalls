@@ -13,6 +13,8 @@
 
 #define BUF_SIZE 4096*1000
 
+#ifdef linux
+
 // build with `-DWRAP_COPY_FILE_RANGE -DBUILD_AS_LIBRARY -ldl` to wrap the copy_file_range syscall as an overload library
 
 static ssize_t (*__real_copy_file_range)(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out, size_t len, unsigned int flags) = NULL;
@@ -50,17 +52,24 @@ static void init_copy_file_range()
                 self, get_process_name(self, exename, sizeof(exename)));
     }
 }
+#endif
+
+#ifdef __APPLE__
+typedef off_t off64_t;
+#endif
 
 ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out, size_t len, unsigned int flags)
 {
     errno = 0;
     ssize_t n;
+#ifdef linux
     if ((n = __real_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags)) < 0 
             && (errno == EAGAIN || errno == EXDEV)) {
         if (getenv("COPY_FILE_RANGE_VERBOSE")) {
             fprintf(stderr, "copy_file_range(2) returned %s; trying with mmap()+write()\n",
                 (errno == EAGAIN)? "EAGAIN" : "EXDEV");
         }
+#endif
         errno = 0;
         struct stat stb1, stb2;
         if (fstat(fd_in, &stb1) < 0 || fstat(fd_out, &stb2) < 0) {
@@ -112,7 +121,9 @@ ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out
             }
         }
         // n is not changed in case MAP_FAILED
+#ifdef linux
     }
+#endif
     return n;
 }
 
