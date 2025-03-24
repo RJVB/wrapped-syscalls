@@ -8,3 +8,4 @@ copy_file_range
 mmapwrite
 mmcopy
 readwrite
+sendfile.wrapper
