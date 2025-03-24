@@ -29,7 +29,10 @@ static ssize_t syscall_copy_file_range(int fd_in, off64_t *off_in, int fd_out, o
 static void init_copy_file_range() __attribute__((constructor)) ;
 static void init_copy_file_range()
 {
-    if (!(__real_copy_file_range = dlsym(RTLD_NEXT, "copy_file_range"))) {
+    dlerror();
+    if (!(__real_copy_file_range = dlsym(RTLD_NEXT, "copy_file_range"))
+        && !(__real_copy_file_range = dlsym(RTLD_DEFAULT, "copy_file_range"))
+    ) {
 #ifdef __NR_copy_file_range
         // libc (?) doesn't have the copy_file_range function, create our own. Sadly we
         // cannot seem to obtain the address of the syscall directly.
@@ -39,13 +42,12 @@ static void init_copy_file_range()
             fprintf(stderr, ": copy_file_range(2) mapped to syscall(__NR_copy_file_range,...) wrapper\n");
         }
 #else
-        fputs(__PRETTY_FUNCTION__, stderr);
-        perror(" couldn't overload copy_file_range(2)");
+        fprintf(stderr, "%s couldn't overload copy_file_range(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
         abort();
 #endif
     }
     if (getenv("COPY_FILE_RANGE_DEBUG")) {
-        fputs(__FUNCTION__, stderr);
+        fputs(__PRETTY_FUNCTION__, stderr);
         pid_t self = getpid();
         char exename[1024];
         fprintf(stderr, " [pid %d=%s]: copy_file_range(2) wrapped with a fallback to handle EAGAIN situations\n",

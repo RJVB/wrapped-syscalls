@@ -42,7 +42,10 @@ static ssize_t syscall_sendfile(int out_fd, int in_fd, off_t *offset, size_t cou
 static void init_sendfile() __attribute__((constructor)) ;
 static void init_sendfile()
 {
-    if (!(__real_sendfile = dlsym(RTLD_NEXT, "sendfile"))) {
+    dlerror();
+    if (!(__real_sendfile = dlsym(RTLD_NEXT, "sendfile"))
+        && !!(__real_sendfile = dlsym(RTLD_DEFAULT, "sendfile"))
+    ) {
 #ifdef __NR_sendfile
         // libc (?) doesn't have the sendfile function, create our own. Sadly we
         // cannot seem to obtain the address of the syscall directly.
@@ -51,13 +54,12 @@ static void init_sendfile()
             fprintf(stderr, "sendfile(2) mapped to syscall(__NR_sendfile,...) wrapper\n");
         }
 #else
-        fputs(__FUNCTION__, stderr);
-        perror(" couldn't overload sendfile(2)");
+        fprintf(stderr, "%s couldn't overload sendfile(2) (%s)", __PRETTY_FUNCTION__, dlerror());
         abort();
 #endif
     }
     if (getenv("SENDFILE_DEBUG")) {
-        fputs(__FUNCTION__, stderr);
+        fputs(__PRETTY_FUNCTION__, stderr);
         pid_t self = getpid();
         char exename[1024];
         fprintf(stderr, " [pid %d=%s]: sendfile(2) wrapped with a fallback to handle EAGAIN situations\n",

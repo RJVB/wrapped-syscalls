@@ -21,13 +21,13 @@ static int (*__real_rename)(const char *old, const char *new);
 static void init_rename() __attribute__((constructor)) ;
 static void init_rename()
 {
-    if (!(__real_rename = dlsym(RTLD_NEXT, "rename"))) {
-        fputs(__FUNCTION__, stderr);
-        perror(" couldn't overload rename(2)");
+    dlerror();
+    if (!(__real_rename = dlsym(RTLD_NEXT, "rename")) && !(__real_rename = dlsym(RTLD_DEFAULT, "rename"))) {
+        fprintf(stderr, "%s couldn't overload rename(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
         abort();
     }
     if (getenv("RENAME_DEBUG")) {
-        fputs(__FUNCTION__, stderr);
+        fputs(__PRETTY_FUNCTION__, stderr);
         pid_t self = getpid();
         char exename[1024];
         fprintf(stderr, " [pid %d=%s]: rename(2) wrapped with a fallback to handle cross-device renames\n",
