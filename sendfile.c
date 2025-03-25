@@ -56,7 +56,6 @@ static void init_sendfile()
         }
 #else
         fprintf(stderr, "%s couldn't overload sendfile(2) (%s)", __PRETTY_FUNCTION__, dlerror());
-        abort();
 #endif
     }
     if (getenv("SENDFILE_DEBUG")) {
@@ -86,6 +85,10 @@ ssize_t __wrap_sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 ssize_t sendfile(int out_fd, int in_fd, off_t *offset, size_t count)
 #endif
 {
+    if (!__real_sendfile) {
+        errno = ENOTSUP;
+        return -1;
+    }
     errno = 0;
     ssize_t n = __real_sendfile(out_fd, in_fd, offset, count);
 #ifdef DEBUG

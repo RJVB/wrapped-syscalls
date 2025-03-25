@@ -26,6 +26,7 @@ int validate_symbol(void **found, const char *name, void *overload)
             *found = dlsym(libc, name);
             dlclose(libc);
             if (!*found || *found == overload) {
+                *found = NULL;
                 return 0;
             }
         }

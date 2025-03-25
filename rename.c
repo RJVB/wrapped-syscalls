@@ -28,7 +28,6 @@ static void init_rename()
         || !validate_symbol((void**)&__real_rename, "rename", &rename)
     ) {
         fprintf(stderr, "%s couldn't overload rename(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
-        abort();
     }
     if (getenv("RENAME_DEBUG")) {
 #if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
@@ -50,6 +49,10 @@ static void init_rename()
 
 int rename(const char *oldf, const char *newf)
 {
+    if (!__real_rename) {
+        errno = ENOTSUP;
+        return -1;
+    }
     errno = 0;
     int n;
     if ((n = __real_rename(oldf, newf)) < 0) {

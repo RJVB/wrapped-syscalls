@@ -37,6 +37,10 @@ ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out
     errno = 0;
     ssize_t n;
 #ifdef linux
+    if (!__real_copy_file_range) {
+        errno = ENOTSUP;
+        return -1;
+    }
     if ((n = __real_copy_file_range(fd_in, off_in, fd_out, off_out, len, flags)) < 0 
             && (errno == EAGAIN || errno == EXDEV)) {
         if (getenv("COPY_FILE_RANGE_VERBOSE")) {
@@ -119,7 +123,6 @@ static void init_copy_file_range()
         }
 #else
         fprintf(stderr, "%s couldn't overload copy_file_range(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
-        abort();
 #endif
     }
     if (getenv("COPY_FILE_RANGE_DEBUG")) {
