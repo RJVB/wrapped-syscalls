@@ -20,3 +20,7 @@ the fallbacks are triggered.
       and apparently still find the symbol in libc if provided by that library.
    3) call validate_symbol() which validates the found symbol against the specified wrapper
       and if they're equal, does another lookup, explicitly in libc.
+
+NB: the code will build on Darwin too; this will provide a working rename(2) wrapper as well
+as functional implementations of sendfile(2) and copy_file_range(2) with the same additional
+features as their wrappers on Linux.

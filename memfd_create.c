@@ -1,6 +1,8 @@
+#ifdef linux
 // features.h gets included via sys/mman.h but unsets __USE_GNU which 
 // we want to have defined so we include it first and then set the flag.
 #include <features.h>
+#endif
 
 #define __USE_GNU
 #include "sys/mman.h"
