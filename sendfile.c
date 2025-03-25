@@ -17,6 +17,7 @@
 
 #include "copyfd.h"
 #include "get_process_name.h"
+#include "validate_symbol.h"
 
 #define BUF_SIZE 4096*1000
 
@@ -43,8 +44,8 @@ static void init_sendfile() __attribute__((constructor)) ;
 static void init_sendfile()
 {
     dlerror();
-    if (!(__real_sendfile = dlsym(RTLD_NEXT, "sendfile"))
-        && !!(__real_sendfile = dlsym(RTLD_DEFAULT, "sendfile"))
+    if (!LOAD_SYMBOL(__real_sendfile, "sendfile")
+        || !validate_symbol((void**)&__real_sendfile, "sendfile", &sendfile)
     ) {
 #ifdef __NR_sendfile
         // libc (?) doesn't have the sendfile function, create our own. Sadly we
@@ -59,11 +60,20 @@ static void init_sendfile()
 #endif
     }
     if (getenv("SENDFILE_DEBUG")) {
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        Dl_info info;
+#endif
         fputs(__PRETTY_FUNCTION__, stderr);
         pid_t self = getpid();
         char exename[1024];
-        fprintf(stderr, " [pid %d=%s]: sendfile(2) wrapped with a fallback to handle EAGAIN situations\n",
+        fprintf(stderr, " [pid %d=%s]: sendfile(2)",
             self, get_process_name(self, exename, sizeof(exename)));
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        if( dladdr(__real_sendfile, &info) ){
+            fprintf(stderr, " [%s::%s]", info.dli_fname, info.dli_sname );
+        }
+#endif
+        fprintf(stderr, " wrapped with a fallback to handle EAGAIN situations\n");
     }
 }
 #else

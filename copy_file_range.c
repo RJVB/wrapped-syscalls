@@ -7,9 +7,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <dlfcn.h>
 #include <sys/syscall.h>
 #include "get_process_name.h"
+#include "validate_symbol.h"
 
 #define BUF_SIZE 4096*1000
 
@@ -26,34 +26,6 @@ static ssize_t syscall_copy_file_range(int fd_in, off64_t *off_in, int fd_out, o
 }
 #endif
 
-static void init_copy_file_range() __attribute__((constructor)) ;
-static void init_copy_file_range()
-{
-    dlerror();
-    if (!(__real_copy_file_range = dlsym(RTLD_NEXT, "copy_file_range"))
-        && !(__real_copy_file_range = dlsym(RTLD_DEFAULT, "copy_file_range"))
-    ) {
-#ifdef __NR_copy_file_range
-        // libc (?) doesn't have the copy_file_range function, create our own. Sadly we
-        // cannot seem to obtain the address of the syscall directly.
-        __real_copy_file_range = syscall_copy_file_range;
-        if (getenv("COPY_FILE_RANGE_DEBUG")) {
-            fputs(__FUNCTION__, stderr);
-            fprintf(stderr, ": copy_file_range(2) mapped to syscall(__NR_copy_file_range,...) wrapper\n");
-        }
-#else
-        fprintf(stderr, "%s couldn't overload copy_file_range(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
-        abort();
-#endif
-    }
-    if (getenv("COPY_FILE_RANGE_DEBUG")) {
-        fputs(__PRETTY_FUNCTION__, stderr);
-        pid_t self = getpid();
-        char exename[1024];
-        fprintf(stderr, " [pid %d=%s]: copy_file_range(2) wrapped with a fallback to handle EAGAIN situations\n",
-                self, get_process_name(self, exename, sizeof(exename)));
-    }
-}
 #endif
 
 #ifdef __APPLE__
@@ -128,6 +100,46 @@ ssize_t copy_file_range(int fd_in, off64_t *off_in, int fd_out, off64_t *off_out
 #endif
     return n;
 }
+
+#ifdef linux
+static void init_copy_file_range() __attribute__((constructor)) ;
+static void init_copy_file_range()
+{
+    dlerror();
+    if (!LOAD_SYMBOL(__real_copy_file_range, "copy_file_range")
+        || !validate_symbol((void**)&__real_copy_file_range, "copy_file_range", &copy_file_range)
+    ) {
+#ifdef __NR_copy_file_range
+        // libc (?) doesn't have the copy_file_range function, create our own. Sadly we
+        // cannot seem to obtain the address of the syscall directly.
+        __real_copy_file_range = syscall_copy_file_range;
+        if (getenv("COPY_FILE_RANGE_DEBUG")) {
+            fputs(__PRETTY_FUNCTION__, stderr);
+            fprintf(stderr, ": copy_file_range(2) mapped to syscall(__NR_copy_file_range,...) wrapper\n");
+        }
+#else
+        fprintf(stderr, "%s couldn't overload copy_file_range(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
+        abort();
+#endif
+    }
+    if (getenv("COPY_FILE_RANGE_DEBUG")) {
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        Dl_info info;
+#endif
+        fputs(__PRETTY_FUNCTION__, stderr);
+        pid_t self = getpid();
+        char exename[1024];
+        fprintf(stderr, " [pid %d=%s]: copy_file_range(2)",
+                self, get_process_name(self, exename, sizeof(exename)));
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        if( dladdr(__real_copy_file_range, &info) ){
+            fprintf(stderr, " [%s::%s]", info.dli_fname, info.dli_sname );
+        }
+#endif
+        fprintf(stderr, " wrapped with a fallback to handle EAGAIN situations\n");
+    }
+}
+#endif
 
 #ifndef BUILD_AS_LIBRARY
 int main(int argc, char **argv)

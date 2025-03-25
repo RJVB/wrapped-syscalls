@@ -2,7 +2,8 @@ CC = gcc
 DEFINES = -DWRAP_SYSCALLS=2 -DBUILD_AS_LIBRARY
 CFLAGS = -Os -g
 
-SOURCES = sendfile.c \
+SOURCES = validate_symbol.c \
+	sendfile.c \
 	copyfd.c \
 	copy_file_range.c \
 	rename.c \

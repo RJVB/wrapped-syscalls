@@ -14,7 +14,9 @@
 #   else
 #       include "copyfd.h"
 #   endif
+
 #include "get_process_name.h"
+#include "validate_symbol.h"
 
 static int (*__real_rename)(const char *old, const char *new);
 
@@ -22,16 +24,27 @@ static void init_rename() __attribute__((constructor)) ;
 static void init_rename()
 {
     dlerror();
-    if (!(__real_rename = dlsym(RTLD_NEXT, "rename")) && !(__real_rename = dlsym(RTLD_DEFAULT, "rename"))) {
+    if (!LOAD_SYMBOL(__real_rename, "rename")
+        || !validate_symbol((void**)&__real_rename, "rename", &rename)
+    ) {
         fprintf(stderr, "%s couldn't overload rename(2) (%s)\n", __PRETTY_FUNCTION__, dlerror());
         abort();
     }
     if (getenv("RENAME_DEBUG")) {
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        Dl_info info;
+#endif
         fputs(__PRETTY_FUNCTION__, stderr);
         pid_t self = getpid();
         char exename[1024];
-        fprintf(stderr, " [pid %d=%s]: rename(2) wrapped with a fallback to handle cross-device renames\n",
+        fprintf(stderr, " [pid %d=%s]: rename(2)",
             self, get_process_name(self, exename, sizeof(exename)));
+#if defined(__MACH__) || defined(__APPLE_CC__) || defined(__USE_GNU)
+        if( dladdr(__real_rename, &info) ){
+            fprintf(stderr, " [%s::%s]", info.dli_fname, info.dli_sname );
+        }
+#endif
+        fprintf(stderr, " wrapped with a fallback to handle cross-device renames\n");
     }
 }
 
