@@ -8,7 +8,8 @@ SOURCES = validate_symbol.c \
 	copy_file_range.c \
 	rename.c \
 	get_process_name.c \
-	memfd_create.c
+	memfd_create.c \
+	mlock2.c
 
 libwrapped_syscalls.so : $(SOURCES)
 	$(CC) -o $@ -fPIC -shared $(DEFINES) $(CFLAGS) $? -ldl
